@@ -42,6 +42,16 @@ jobs:
       - name: Build manifest
         run: node scripts/build-manifest.mjs songs _site/songs.json
 
+      # Pages caches every file for 10 minutes, so a browser can pair a fresh
+      # HTML page with a stale script. Stamp local script, module and
+      # stylesheet URLs with the commit so each deploy loads its own files.
+      - name: Stamp asset URLs with the commit
+        run: |
+          v="${GITHUB_SHA::7}"
+          sed -i -E "s#(href|src)=\"(css|js)/([^\"?]+)\"#\1=\"\2/\3?v=$v\"#g" _site/*.html
+          sed -i -E "s#from \"\./([a-z]+\.js)\"#from \"./\1?v=$v\"#g" _site/js/*.js
+          grep -ho '?v=[0-9a-f]*' _site/*.html _site/js/*.js | sort | uniq -c
+
       - uses: actions/configure-pages@v5
 
       - uses: actions/upload-pages-artifact@v3
