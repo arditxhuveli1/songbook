@@ -1,0 +1,283 @@
+/* ------------------------------------------------------------------
+   Songbook – site chrome.
+   Mobile-first, system UI font, light and dark via prefers-color-scheme.
+   The rendered documents keep their own fonts (see the @font-face block).
+   ------------------------------------------------------------------ */
+
+:root {
+  color-scheme: light dark;
+  --bg: #f6f6f4;
+  --fg: #1a1a1a;
+  --muted: #6b6b6b;
+  --card: #ffffff;
+  --border: #e0e0dc;
+  --accent: #1f5fbf;
+  --accent-fg: #ffffff;
+  --danger: #b3261e;
+  --ok: #1b7a3d;
+  --tap: 48px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #131313;
+    --fg: #ececec;
+    --muted: #a3a3a3;
+    --card: #1e1e1e;
+    --border: #333333;
+    --accent: #7fb0ff;
+    --accent-fg: #0b1a33;
+    --danger: #ff8a80;
+    --ok: #7fd49a;
+  }
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, Cantarell, sans-serif;
+  font-size: 17px;
+  line-height: 1.45;
+  background: var(--bg);
+  color: var(--fg);
+  overflow-x: hidden;
+}
+
+a { color: var(--accent); }
+
+.wrap {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+/* Header / toolbar ------------------------------------------------ */
+header.bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 16px;
+  min-height: 56px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+header.bar h1 {
+  font-size: 1.1rem;
+  margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+h1.brand {
+  font-size: 1.5rem;
+  margin: 8px 0 12px;
+}
+
+.btn, .back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--tap);
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--fg);
+  text-decoration: none;
+  font: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn:hover, .back:hover { border-color: var(--accent); }
+.btn.primary {
+  background: var(--accent);
+  color: var(--accent-fg);
+  border-color: var(--accent);
+}
+.btn.danger { color: var(--danger); }
+.btn:disabled { opacity: .5; cursor: default; }
+.btn.small { min-height: 40px; padding: 0 10px; font-size: .95rem; }
+.back { padding: 0 12px; }
+
+/* Forms ----------------------------------------------------------- */
+input[type="search"], input[type="text"], input[type="password"], input[type="file"] {
+  width: 100%;
+  min-height: var(--tap);
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--fg);
+  font: inherit;
+}
+input:focus-visible, .btn:focus-visible, .back:focus-visible, .song:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+label { display: block; font-weight: 600; margin: 12px 0 6px; }
+.help { color: var(--muted); font-size: .95rem; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.row > .grow { flex: 1 1 200px; }
+
+/* Song list ------------------------------------------------------- */
+.search { margin-bottom: 12px; }
+ul.songs { list-style: none; margin: 0; padding: 0; }
+ul.songs li + li { margin-top: 8px; }
+a.song {
+  display: block;
+  padding: 14px 16px;
+  min-height: 56px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--fg);
+  text-decoration: none;
+  font-size: 1.1rem;
+}
+a.song:hover { border-color: var(--accent); }
+.count { color: var(--muted); font-size: .9rem; margin: 0 0 8px; }
+
+.state { padding: 24px 8px; color: var(--muted); text-align: center; }
+.state.error { color: var(--danger); }
+
+footer.foot {
+  margin-top: 40px;
+  padding: 16px;
+  text-align: center;
+  font-size: .85rem;
+  color: var(--muted);
+}
+footer.foot a { color: var(--muted); }
+
+/* Status messages ------------------------------------------------- */
+.msg { padding: 10px 12px; border-radius: 10px; margin: 8px 0; border: 1px solid var(--border); background: var(--card); }
+.msg.error { border-color: var(--danger); color: var(--danger); }
+.msg.ok { border-color: var(--ok); color: var(--ok); }
+
+/* Upload page ----------------------------------------------------- */
+ul.files { list-style: none; margin: 12px 0; padding: 0; }
+ul.files li {
+  border: 1px solid var(--border);
+  background: var(--card);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 8px;
+}
+ul.files .name { font-weight: 600; word-break: break-word; }
+ul.files .status { margin-top: 6px; font-size: .95rem; color: var(--muted); }
+ul.files .status.error { color: var(--danger); }
+ul.files .status.ok { color: var(--ok); }
+ul.files input[type="text"] { margin-top: 6px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+/* Document viewer ------------------------------------------------- */
+.viewer {
+  padding: 12px 0;
+}
+/* Wrapper is scaled with a transform; height is corrected in JS. */
+#doc-scale {
+  transform-origin: top left;
+  width: max-content;
+}
+#doc {
+  width: 100%;
+  overflow: hidden;         /* fit mode: nothing leaks sideways */
+  position: relative;
+}
+#doc.actual { overflow-x: auto; }  /* actual size: scroll inside the box, not the body */
+
+/* docx-preview output: keep pages white in any theme */
+.docx-wrapper {
+  background: transparent !important;
+  padding: 0 !important;
+  display: block !important;
+}
+.docx-wrapper > section.docx {
+  background: #ffffff !important;
+  color: #000000;
+  box-shadow: 0 1px 4px rgba(0,0,0,.25);
+  margin: 0 0 16px 0 !important;
+}
+
+.loading { color: var(--muted); padding: 40px 16px; text-align: center; }
+.loading::before {
+  content: "";
+  display: block;
+  width: 28px; height: 28px;
+  margin: 0 auto 12px;
+  border-radius: 50%;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  animation: spin .9s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ------------------------------------------------------------------
+   Metric-compatible web fonts, declared under the ORIGINAL family names
+   so a document asking for "Times New Roman" renders with Tinos on a
+   phone that has no Times New Roman. Same letter widths, so the chords
+   stay above their syllables.
+     Tinos   -> Times New Roman
+     Arimo   -> Arial
+     Carlito -> Calibri
+     Cousine -> Courier New
+   Files: Fontsource on jsDelivr, pinned. Only loaded when a document
+   actually uses the family.
+   ------------------------------------------------------------------ */
+@font-face { font-family: "Times New Roman"; font-style: normal; font-weight: 400; font-display: block;
+  src: url("https://cdn.jsdelivr.net/npm/@fontsource/tinos@5.3.0/files/tinos-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "Times New Roman"; font-style: normal; font-weight: 700; font-display: block;
+  src: url("https://cdn.jsdelivr.net/npm/@fontsource/tinos@5.3.0/files/tinos-latin-700-normal.woff2") format("woff2"); }
+@font-face { font-family: "Times New Roman"; font-style: italic; font-weight: 400; font-display: block;
+  src: url("https://cdn.jsdelivr.net/npm/@fontsource/tinos@5.3.0/files/tinos-latin-400-italic.woff2") format("woff2"); }
+@font-face { font-family: "Times New Roman"; font-style: italic; font-weight: 700; font-display: block;
+  src: url("https://cdn.jsdelivr.net/npm/@fontsource/tinos@5.3.0/files/tinos-latin-700-italic.woff2") format("woff2"); }
+
+@font-face { font-family: "Arial"; font-style: normal; font-weight: 400; font-display: block;
+  src: url("https://cdn.jsdelivr.net/npm/@fontsource/arimo@5.3.0/files/arimo-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "Arial"; font-style: normal; font-weight: 700; font-display: block;
+  src: url("https://cdn.jsdelivr.net/npm/@fontsource/arimo@5.3.0/files/arimo-latin-700-normal.woff2") format("woff2"); }
+@font-face { font-family: "Arial"; font-style: italic; font-weight: 400; font-display: block;
+  src: url("https://cdn.jsdelivr.net/npm/@fontsource/arimo@5.3.0/files/arimo-latin-400-italic.woff2") format("woff2"); }
+@font-face { font-family: "Arial"; font-style: italic; font-weight: 700; font-display: block;
+  src: url("https://cdn.jsdelivr.net/npm/@fontsource/arimo@5.3.0/files/arimo-latin-700-italic.woff2") format("woff2"); }
+
+@font-face { font-family: "Calibri"; font-style: normal; font-weight: 400; font-display: block;
+  src: url("https://cdn.jsdelivr.net/npm/@fontsource/carlito@5.3.0/files/carlito-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "Calibri"; font-style: normal; font-weight: 700; font-display: block;
+  src: url("https://cdn.jsdelivr.net/npm/@fontsource/carlito@5.3.0/files/carlito-latin-700-normal.woff2") format("woff2"); }
+@font-face { font-family: "Calibri"; font-style: italic; font-weight: 400; font-display: block;
+  src: url("https://cdn.jsdelivr.net/npm/@fontsource/carlito@5.3.0/files/carlito-latin-400-italic.woff2") format("woff2"); }
+@font-face { font-family: "Calibri"; font-style: italic; font-weight: 700; font-display: block;
+  src: url("https://cdn.jsdelivr.net/npm/@fontsource/carlito@5.3.0/files/carlito-latin-700-italic.woff2") format("woff2"); }
+
+@font-face { font-family: "Courier New"; font-style: normal; font-weight: 400; font-display: block;
+  src: url("https://cdn.jsdelivr.net/npm/@fontsource/cousine@5.3.0/files/cousine-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "Courier New"; font-style: normal; font-weight: 700; font-display: block;
+  src: url("https://cdn.jsdelivr.net/npm/@fontsource/cousine@5.3.0/files/cousine-latin-700-normal.woff2") format("woff2"); }
+@font-face { font-family: "Courier New"; font-style: italic; font-weight: 400; font-display: block;
+  src: url("https://cdn.jsdelivr.net/npm/@fontsource/cousine@5.3.0/files/cousine-latin-400-italic.woff2") format("woff2"); }
+@font-face { font-family: "Courier New"; font-style: italic; font-weight: 700; font-display: block;
+  src: url("https://cdn.jsdelivr.net/npm/@fontsource/cousine@5.3.0/files/cousine-latin-700-italic.woff2") format("woff2"); }
+
+/* Print: only the document, at actual size --------------------------- */
+@media print {
+  body { background: #fff; color: #000; overflow: visible; }
+  header.bar, footer.foot, .no-print { display: none !important; }
+  .wrap { max-width: none; padding: 0; }
+  .viewer { padding: 0; }
+  #doc { overflow: visible !important; height: auto !important; }
+  #doc-scale { transform: none !important; width: auto; }
+  .docx-wrapper > section.docx { box-shadow: none; margin: 0 !important; page-break-after: always; }
+}

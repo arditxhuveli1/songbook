@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="sq">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <meta name="robots" content="noindex">
+  <title>Upload – Songbook</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="bar">
+    <a class="back" href="index.html" aria-label="Back to the list">‹ List</a>
+    <h1>Upload</h1>
+  </header>
+  <main class="wrap">
+
+    <!-- State 1: no token saved -->
+    <section id="token-section" hidden>
+      <p>Paste a GitHub fine-grained personal access token with <strong>Contents: Read and write</strong> on the songbook repository. It is stored only in this browser.</p>
+      <form id="token-form">
+        <label for="token">Token</label>
+        <input type="password" id="token" autocomplete="off" spellcheck="false" placeholder="Paste the token" required>
+        <p class="help"><a id="readme-link" href="#" target="_blank" rel="noopener">How to create a token</a></p>
+        <div class="msg error" id="token-error" hidden></div>
+        <button class="btn primary" id="token-save" type="submit">Save</button>
+      </form>
+    </section>
+
+    <!-- State 2: token saved -->
+    <section id="upload-section" hidden>
+      <form id="upload-form">
+        <label for="files">Word documents (.docx)</label>
+        <input type="file" id="files" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple>
+        <p class="help">Several files can be selected at once. Each is uploaded in turn. The name below is the file name on the site; edit it if needed.</p>
+        <ul class="files" id="file-list"></ul>
+        <div class="msg error" id="upload-error" hidden></div>
+        <div class="msg ok" id="upload-ok" hidden></div>
+        <div class="row">
+          <button class="btn primary" id="upload-btn" type="submit" disabled>Upload</button>
+          <button class="btn" id="reset-btn" type="button" hidden>Clear</button>
+        </div>
+      </form>
+      <hr style="border:0;border-top:1px solid var(--border);margin:32px 0 16px">
+      <div class="row">
+        <span class="help grow">Uploading to <a id="repo-link" href="#" target="_blank" rel="noopener"></a></span>
+        <button class="btn danger small" id="forget" type="button">Forget token on this device</button>
+      </div>
+    </section>
+
+  </main>
+  <script type="module" src="js/upload.js"></script>
+</body>
+</html>

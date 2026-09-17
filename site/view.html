@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="sq">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <title>Songbook</title>
+  <link rel="stylesheet" href="css/style.css">
+  <!-- docx-preview needs JSZip loaded first. Pinned versions. -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/docx-preview@0.4.0/dist/docx-preview.min.js" crossorigin="anonymous"></script>
+</head>
+<body>
+  <header class="bar">
+    <a class="back" href="index.html" aria-label="Back to the list">‹ List</a>
+    <h1 id="title">…</h1>
+    <button class="btn small" id="fit" type="button" hidden>Actual size</button>
+    <a class="btn small" id="download" hidden download>Download .docx</a>
+  </header>
+  <main class="wrap viewer">
+    <div class="loading" id="loading">Loading…</div>
+    <div class="msg error" id="error" hidden></div>
+    <div id="doc" hidden><div id="doc-scale"></div></div>
+  </main>
+  <script type="module" src="js/view.js"></script>
+</body>
+</html>
