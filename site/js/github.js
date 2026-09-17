@@ -56,6 +56,7 @@ export function songPath(slug) {
   return `${SONGS_DIR}/${slug}.docx`;
 }
 
+// Contents API helpers, used by the Remove button on the song page.
 // sha of the file on the branch, or null when it does not exist.
 export async function getSha(token, path) {
   const { status, ok, data } = await api(token, "GET", `/repos/${OWNER}/${REPO}/contents/${path}?ref=${encodeURIComponent(BRANCH)}`);
@@ -73,6 +74,57 @@ export function putFile(token, path, content, sha, message) {
 
 export function deleteFile(token, path, sha, message) {
   return api(token, "DELETE", `/repos/${OWNER}/${REPO}/contents/${path}`, { message, sha, branch: BRANCH });
+}
+
+// --- one commit per batch (Git Data API) ---------------------------------------
+function readError(res, what) {
+  if (res.status === 401) return new ApiError("The token is invalid or expired. Enter a new one.", { reauth: true });
+  return new ApiError(`GitHub answered ${res.status} while ${what}.`);
+}
+
+// Head commit of the branch and the tree it points to.
+export async function getBranch(token) {
+  const res = await api(token, "GET", `/repos/${OWNER}/${REPO}/branches/${encodeURIComponent(BRANCH)}`);
+  if (!res.ok) throw readError(res, "reading the branch");
+  return { commit: res.data.commit.sha, tree: res.data.commit.commit.tree.sha };
+}
+
+// Map of path -> blob sha for every file in the songs folder, empty when the folder does not exist.
+export async function listSongs(token) {
+  const res = await api(token, "GET", `/repos/${OWNER}/${REPO}/contents/${SONGS_DIR}?ref=${encodeURIComponent(BRANCH)}`);
+  const files = new Map();
+  if (res.status === 404) return files;
+  if (!res.ok) throw readError(res, "listing the songs");
+  for (const f of Array.isArray(res.data) ? res.data : []) if (f.type === "file") files.set(f.path, f.sha);
+  return files;
+}
+
+export async function createBlob(token, base64) {
+  const res = await api(token, "POST", `/repos/${OWNER}/${REPO}/git/blobs`, { content: base64, encoding: "base64" });
+  if (!res.ok) throw writeError(res);
+  return res.data.sha;
+}
+
+// entries: [{ path, mode: "100644", type: "blob", sha }]
+export async function createTree(token, baseTree, entries) {
+  const res = await api(token, "POST", `/repos/${OWNER}/${REPO}/git/trees`, { base_tree: baseTree, tree: entries });
+  if (!res.ok) throw writeError(res);
+  return res.data.sha;
+}
+
+export async function createCommit(token, message, tree, parent) {
+  const res = await api(token, "POST", `/repos/${OWNER}/${REPO}/git/commits`, { message, tree, parents: [parent] });
+  if (!res.ok) throw writeError(res);
+  return res.data.sha;
+}
+
+// Moves the branch to the commit. Returns false when that is not a fast-forward,
+// meaning the branch moved since getBranch() and the caller must start over.
+export async function updateRef(token, sha) {
+  const res = await api(token, "PATCH", `/repos/${OWNER}/${REPO}/git/refs/heads/${encodeURIComponent(BRANCH)}`, { sha });
+  if (res.status === 422 || res.status === 409) return false;
+  if (!res.ok) throw writeError(res);
+  return true;
 }
 
 // Turns a failed write response into an ApiError with a plain message.

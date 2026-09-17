@@ -39,7 +39,7 @@ Renewal: when the token expires the upload page reports it as invalid and asks f
 
 ## Uploading
 
-Open `upload.html`, choose one or more `.docx` files, check the suggested file name under each one (letters, digits and hyphens; `ë` becomes `e`, `ç` becomes `c`) and press **Upload**. If a file with the same name already exists you are asked before it is replaced. The site updates about a minute after the upload; the **Actions** tab shows the build.
+Open `upload.html`, choose one or more `.docx` files, check the suggested file name under each one (letters, digits and hyphens; `ë` becomes `e`, `ç` becomes `c`) and press **Upload**. If a file with the same name already exists you are asked before it is replaced. All the files of one upload land in a single commit, so the site is built once, about a minute after the upload; the **Actions** tab shows the build.
 
 ## Removing a song
 

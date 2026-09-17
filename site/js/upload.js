@@ -1,6 +1,9 @@
 import { OWNER, REPO } from "./config.js";
 import { slugify } from "./slug.js";
-import { REPO_URL, getToken, setToken, validateToken, songPath, getSha, putFile, writeError } from "./github.js";
+import {
+  REPO_URL, getToken, setToken, validateToken, songPath,
+  getBranch, listSongs, createBlob, createTree, createCommit, updateRef,
+} from "./github.js";
 
 const $ = (id) => document.getElementById(id);
 const tokenSection = $("token-section");
@@ -65,7 +68,7 @@ $("forget").addEventListener("click", () => {
 });
 
 // --- file selection -----------------------------------------------------------
-let items = []; // { file, slugInput, statusEl, done }
+let items = []; // { file, slugInput, statusEl, done, slug }
 
 function slugFromFilename(name) {
   return slugify(name.replace(/\.docx$/i, ""));
@@ -118,36 +121,78 @@ function readAsBase64(file) {
   return new Promise((resolve, reject) => {
     const r = new FileReader();
     r.onload = () => resolve(String(r.result).replace(/^data:[^,]*,/, ""));
-    r.onerror = () => reject(new Error("Could not read the file."));
+    r.onerror = () => reject(new Error(`Could not read "${file.name}".`));
     r.readAsDataURL(file);
   });
 }
 
-// Returns true when the file was uploaded, false when skipped.
-async function uploadOne(token, item, content) {
-  const slug = slugify(item.slugInput.value);
-  if (!slug) throw new Error("The file name is empty.");
-  item.slugInput.value = slug;
-  const path = songPath(slug);
+// "Add x.docx" for one file, "Add 3 songs, update 2 songs" plus the names for several.
+function commitMessage(added, updated) {
+  const names = [...added, ...updated];
+  if (names.length === 1) return `${added.length ? "Add" : "Update"} ${names[0]}`;
+  const count = (n) => `${n} ${n === 1 ? "song" : "songs"}`;
+  const parts = [];
+  if (added.length) parts.push(`add ${count(added.length)}`);
+  if (updated.length) parts.push(`update ${count(updated.length)}`);
+  const subject = parts.join(", ");
+  return `${subject[0].toUpperCase()}${subject.slice(1)}\n\n${names.join("\n")}\n`;
+}
 
-  setStatus(item, "Checking…");
-  let sha = await getSha(token, path);
-  if (sha && !confirm(`"${slug}.docx" already exists on the site. Replace it?`)) {
-    setStatus(item, "Skipped.");
-    return false;
+// Writes every pending item to the branch in a single commit.
+// Returns the number of files committed, or null when the user cancelled.
+// Nothing is published until the final ref update, so an error before that
+// leaves the repository untouched.
+async function uploadBatch(token, pending) {
+  let base = await getBranch(token);
+  const existing = await listSongs(token);
+
+  const replacing = pending.filter((i) => existing.has(songPath(i.slug)));
+  if (replacing.length) {
+    const names = replacing.map((i) => `${i.slug}.docx`).join(", ");
+    const question = replacing.length === 1
+      ? `"${names}" already exists on the site. Replace it?`
+      : `${replacing.length} of these already exist and will be replaced: ${names}. Continue?`;
+    if (!confirm(question)) return null;
   }
 
-  setStatus(item, "Uploading…");
-  const message = () => `${sha ? "Update" : "Add"} ${slug}.docx`;
-  let res = await putFile(token, path, content, sha, message());
-  if (res.status === 409 || res.status === 422) {
-    // Changed since we read the sha: re-read once and retry.
-    setStatus(item, "File changed on GitHub, retrying…");
-    sha = await getSha(token, path);
-    res = await putFile(token, path, content, sha, message());
+  const entries = [];
+  const added = [];
+  const updated = [];
+  for (const item of pending) {
+    setStatus(item, "Reading…");
+    const content = await readAsBase64(item.file);
+    setStatus(item, "Sending…");
+    const sha = await createBlob(token, content);
+    const path = songPath(item.slug);
+    const old = existing.get(path);
+    if (old === sha) {
+      item.done = true;
+      setStatus(item, "Unchanged, already on the site.", "ok");
+      continue;
+    }
+    setStatus(item, "Sent.");
+    entries.push({ path, mode: "100644", type: "blob", sha });
+    (old ? updated : added).push(`${item.slug}.docx`);
   }
-  if (!res.ok) throw writeError(res);
-  return true;
+  const changed = pending.filter((i) => !i.done);
+  if (!entries.length) return 0;
+
+  for (const item of changed) setStatus(item, "Committing…");
+  const message = commitMessage(added, updated);
+  for (let attempt = 0; ; attempt++) {
+    const tree = await createTree(token, base.tree, entries);
+    const commit = await createCommit(token, message, tree, base.commit);
+    if (await updateRef(token, commit)) break;
+    // The branch moved meanwhile (a Remove from another device, for example).
+    // Blobs are content-addressed, so only the tree and commit are redone.
+    if (attempt > 0) throw new Error("The repository changed while uploading. Press Upload again.");
+    base = await getBranch(token);
+  }
+  for (const item of changed) {
+    item.done = true;
+    setStatus(item, "Uploaded.", "ok");
+  }
+  return entries.length;
 }
 
 uploadForm.addEventListener("submit", async (e) => {
@@ -157,53 +202,50 @@ uploadForm.addEventListener("submit", async (e) => {
 
   uploadError.hidden = true;
   uploadOk.hidden = true;
+  const fail = (message) => {
+    uploadError.textContent = message;
+    uploadError.hidden = false;
+  };
+
+  // Every name must be non-empty and unique inside the batch.
+  const pending = items.filter((i) => !i.done);
+  const seen = new Set();
+  for (const item of pending) {
+    const slug = slugify(item.slugInput.value);
+    if (!slug) return fail(`The name for "${item.file.name}" is empty.`);
+    if (seen.has(slug)) return fail(`Two files would be named "${slug}.docx". Change one of them.`);
+    seen.add(slug);
+    item.slug = slug;
+    item.slugInput.value = slug;
+  }
+  if (!pending.length) return;
+
   uploadBtn.disabled = true;
   filesInput.disabled = true;
-
-  // Reject duplicate names inside the same batch.
-  const seen = new Map();
-  for (const item of items) {
-    if (item.done) continue;
-    const s = slugify(item.slugInput.value);
-    if (seen.has(s)) {
-      uploadError.textContent = `Two files would be named "${s}.docx". Change one of them.`;
-      uploadError.hidden = false;
-      uploadBtn.disabled = false;
-      filesInput.disabled = false;
-      return;
+  try {
+    const count = await uploadBatch(token, pending);
+    if (count === null) {
+      for (const item of pending) setStatus(item, "");
+    } else if (count === 0) {
+      uploadOk.textContent = "Already up to date. These files are on the site unchanged.";
+      uploadOk.hidden = false;
+    } else {
+      uploadOk.innerHTML = `Uploaded. It will appear on the site in about a minute. <a href="${REPO_URL}/actions" target="_blank" rel="noopener">See the build</a>.`;
+      uploadOk.hidden = false;
     }
-    seen.set(s, item);
-  }
-
-  let uploaded = 0;
-  let failed = 0;
-  let stop = false;
-  for (const item of items) {
-    if (item.done || !/\.docx$/i.test(item.file.name)) continue;
-    try {
-      const content = await readAsBase64(item.file);
-      const did = await uploadOne(token, item, content);
-      item.done = true;
-      if (did) { uploaded++; setStatus(item, "Uploaded.", "ok"); }
-    } catch (err) {
-      failed++;
-      setStatus(item, err.message, "error");
-      if (err.network) { stop = true; break; }
-      if (err.reauth) { setToken(""); showTokenForm(err.message); stop = true; break; }
+  } catch (err) {
+    // Keep the selection so the batch can be retried.
+    for (const item of pending) if (!item.done) setStatus(item, "Not uploaded.", "error");
+    if (err.reauth) {
+      setToken("");
+      showTokenForm(err.message);
+    } else {
+      fail(err.message);
     }
+  } finally {
+    uploadBtn.disabled = items.every((i) => i.done);
+    filesInput.disabled = false;
   }
-
-  if (uploaded > 0) {
-    uploadOk.innerHTML = `Uploaded. It will appear on the site in about a minute. <a href="${REPO_URL}/actions" target="_blank" rel="noopener">See the build</a>.`;
-    uploadOk.hidden = false;
-  }
-  if (failed > 0 && !stop) {
-    uploadError.textContent = "Some files were not uploaded. See the messages above.";
-    uploadError.hidden = false;
-  }
-  // Keep the selection so a failed upload can be retried.
-  uploadBtn.disabled = items.every((i) => i.done);
-  filesInput.disabled = false;
 });
 
 // --- init ---------------------------------------------------------------------------
