@@ -1,10 +1,13 @@
 // Renders one .docx with docx-preview, scaled to the screen width.
+import { REPO_URL, getToken, setToken, songPath, getSha, deleteFile, writeError } from "./github.js";
 
 const FIT_KEY = "songbook.fit"; // "width" | "actual"
 
 const titleEl = document.getElementById("title");
 const fitBtn = document.getElementById("fit");
 const downloadEl = document.getElementById("download");
+const removeBtn = document.getElementById("remove");
+const removedEl = document.getElementById("removed");
 const loading = document.getElementById("loading");
 const errorEl = document.getElementById("error");
 const doc = document.getElementById("doc");
@@ -137,6 +140,36 @@ function fixColumns(root) {
   }
 }
 
+// Remove: only offered on a device that holds the upload token.
+async function removeSong(song) {
+  const token = getToken();
+  if (!token) return;
+  if (!confirm(`Remove "${song.title}" from the site? The file ${song.slug}.docx will be deleted from the repository.`)) return;
+
+  removeBtn.disabled = true;
+  removeBtn.textContent = "Removing…";
+  const path = songPath(song.slug);
+  try {
+    let sha = await getSha(token, path);
+    if (!sha) throw new Error("The file is no longer in the repository. It will disappear from the list after the next build.");
+    let res = await deleteFile(token, path, sha, `Remove ${song.slug}.docx`);
+    if (res.status === 409 || res.status === 422) {
+      sha = await getSha(token, path);
+      if (sha) res = await deleteFile(token, path, sha, `Remove ${song.slug}.docx`);
+    }
+    if (!res.ok) throw writeError(res);
+    removeBtn.hidden = true;
+    removedEl.innerHTML = `Removed. It disappears from the list in about a minute. <a href="${REPO_URL}/actions" target="_blank" rel="noopener">See the build</a> or <a href="index.html">go back to the list</a>.`;
+    removedEl.hidden = false;
+  } catch (err) {
+    if (err.reauth) setToken("");
+    errorEl.textContent = err.reauth ? `${err.message} Open the upload page to enter it.` : err.message;
+    errorEl.hidden = false;
+    removeBtn.disabled = false;
+    removeBtn.textContent = "Remove";
+  }
+}
+
 async function main() {
   const slug = new URLSearchParams(location.search).get("song");
   if (!slug) return fail("No song selected.");
@@ -155,6 +188,10 @@ async function main() {
   document.title = `${song.title} – Songbook`;
   downloadEl.href = song.docx;
   downloadEl.hidden = false;
+  if (getToken()) {
+    removeBtn.hidden = false;
+    removeBtn.addEventListener("click", () => removeSong(song));
+  }
 
   if (typeof docx === "undefined" || typeof JSZip === "undefined") {
     return fail("The document viewer failed to load. Check your connection and reload.");

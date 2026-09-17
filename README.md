@@ -11,7 +11,7 @@ Site pages:
 | Page | What it does |
 | --- | --- |
 | `index.html` | Song list with search. Search ignores case and diacritics, so `miresin` finds `mirësin`. |
-| `view.html?song=<slug>` | Renders the document. "Fit width" scales the page to the screen; "Actual size" shows it 1:1. Print shows only the document. |
+| `view.html?song=<slug>` | Renders the document. "Fit width" scales the page to the screen; "Actual size" shows it 1:1. Print shows only the document. Devices with the token also get a Remove button. |
 | `upload.html` | Saves the token, then uploads one or more `.docx` files. |
 
 The song title shown in the list is the first non-empty paragraph of the document. If that is empty or longer than 80 characters, the file name is used instead.
@@ -41,9 +41,13 @@ Renewal: when the token expires the upload page reports it as invalid and asks f
 
 Open `upload.html`, choose one or more `.docx` files, check the suggested file name under each one (letters, digits and hyphens; `ë` becomes `e`, `ç` becomes `c`) and press **Upload**. If a file with the same name already exists you are asked before it is replaced. The site updates about a minute after the upload; the **Actions** tab shows the build.
 
-## Renaming or deleting a song
+## Removing a song
 
-Rename or delete the file directly in the `songs/` folder on github.com (open the file, use the pencil to rename or the trash icon to delete, and commit to `main`). The next deploy picks it up. The title in the list comes from the document's first line, so to change the title edit the document and upload it again.
+Open the song on a device that has the token saved and press **Remove** in the top bar. After confirmation the file is deleted from `songs/` and the song disappears from the list about a minute later. The button is not shown on devices without the token.
+
+## Renaming a song
+
+Rename the file directly in the `songs/` folder on github.com (open the file, use the pencil to rename, and commit to `main`), or remove it and upload it again under the new name. The title in the list comes from the document's first line, so to change the title edit the document and upload it again.
 
 ## Local check
 

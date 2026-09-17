@@ -16,10 +16,12 @@
     <h1 id="title">…</h1>
     <button class="btn small" id="fit" type="button" hidden>Actual size</button>
     <a class="btn small" id="download" hidden download>Download .docx</a>
+    <button class="btn small danger" id="remove" type="button" hidden>Remove</button>
   </header>
   <main class="wrap viewer">
     <div class="loading" id="loading">Loading…</div>
     <div class="msg error" id="error" hidden></div>
+    <div class="msg ok" id="removed" hidden></div>
     <div id="doc" hidden><div id="doc-scale"></div></div>
   </main>
   <script type="module" src="js/view.js"></script>
