@@ -46,6 +46,97 @@ window.addEventListener("resize", layout);
 window.addEventListener("orientationchange", () => setTimeout(layout, 50));
 window.addEventListener("afterprint", layout);
 
+// ---------------------------------------------------------------------------
+// Fidelity fixes applied to docx-preview's output. Chord sheets depend on
+// exact line and column breaks, and three renderer defaults move them:
+//
+// 1. Word computes "auto" line spacing (e.g. 1.38 lines) as a multiple of
+//    the font's own line height (ascent + descent + line gap), the browser
+//    as a multiple of the font size. Times New Roman 13pt at 1.38 is 20.6pt
+//    in Word but only 17.9pt in the browser, so more lines fit per column.
+// 2. CSS balances multi-column content; Word fills column 1 to the bottom
+//    of the page before starting column 2.
+// 3. A column gap given per column (<w:col w:space>) is ignored, and the
+//    browser default (1em) is narrower than Word's 0.5in.
+// ---------------------------------------------------------------------------
+
+// Line height / font size of common Word fonts (from their hhea metrics).
+const LINE_RATIOS = {
+  "times new roman": 1.15, tinos: 1.15, "liberation serif": 1.15,
+  arial: 1.15, arimo: 1.15, "liberation sans": 1.15, helvetica: 1.15,
+  calibri: 1.22, carlito: 1.22,
+  cambria: 1.17, caladea: 1.17,
+  "courier new": 1.13, cousine: 1.13, "liberation mono": 1.13,
+  georgia: 1.136, verdana: 1.215, tahoma: 1.207, "segoe ui": 1.33,
+  "book antiqua": 1.13, garamond: 1.13, "comic sans ms": 1.39,
+};
+const measuredRatios = new Map();
+
+function lineRatio(fontFamily) {
+  const family = fontFamily.split(",")[0].trim().replace(/^["']|["']$/g, "").toLowerCase();
+  if (LINE_RATIOS[family]) return LINE_RATIOS[family];
+  if (measuredRatios.has(family)) return measuredRatios.get(family);
+  // Unknown font: ask the browser for its normal line height.
+  const probe = document.createElement("span");
+  probe.textContent = "Hg";
+  probe.style.cssText = `position:absolute;visibility:hidden;white-space:nowrap;font-family:${fontFamily};font-size:100px;line-height:normal`;
+  document.body.append(probe);
+  const ratio = probe.offsetHeight / 100 || 1.15;
+  probe.remove();
+  measuredRatios.set(family, ratio);
+  return ratio;
+}
+
+function fixLineHeights(root) {
+  for (const p of root.querySelectorAll("p")) {
+    const lh = p.style.lineHeight;
+    if (!/^[\d.]+$/.test(lh)) continue; // only unitless values come from "auto" spacing
+    const sample = p.querySelector("span") || p;
+    const cs = getComputedStyle(sample);
+    const ratio = lineRatio(cs.fontFamily);
+    p.style.lineHeight = (parseFloat(lh) * ratio).toFixed(4);
+    if (sample !== p) {
+      // Give the paragraph's own strut the font of its first run, otherwise
+      // the document default font (often Arial 11pt) sits on a different
+      // baseline and pads every line box by a fraction of a pixel.
+      p.style.fontFamily = cs.fontFamily;
+      p.style.fontSize = cs.fontSize;
+    }
+  }
+}
+
+function fixColumns(root) {
+  for (const section of root.querySelectorAll("section.docx")) {
+    const articles = [...section.querySelectorAll(":scope > article")].filter((a) => a.style.columnCount);
+    if (!articles.length) continue;
+    for (const a of articles) {
+      if (!a.style.columnGap) a.style.columnGap = "36pt"; // Word's default column spacing
+    }
+    // Fill columns top to bottom: give the page its real height and let the
+    // column block take what is left. If the content does not fit on the
+    // page (Word would add a page), fall back to the growing, balanced layout
+    // so nothing is cut off.
+    const pageHeight = section.style.minHeight;
+    if (!pageHeight) continue;
+    section.style.height = pageHeight;
+    for (const a of articles) {
+      a.style.flex = "1 1 auto";
+      a.style.minHeight = "0";
+      a.style.marginBottom = "0";
+      a.style.columnFill = "auto";
+    }
+    const overflows =
+      section.scrollHeight > section.clientHeight + 1 ||
+      articles.some((a) => a.scrollWidth > a.clientWidth + 1);
+    if (overflows) {
+      section.style.height = "";
+      for (const a of articles) {
+        a.style.flex = a.style.minHeight = a.style.marginBottom = a.style.columnFill = "";
+      }
+    }
+  }
+}
+
 async function main() {
   const slug = new URLSearchParams(location.search).get("song");
   if (!slug) return fail("No song selected.");
@@ -83,6 +174,10 @@ async function main() {
       inWrapper: true,
       ignoreWidth: false,
       breakPages: true,
+      // Only break pages where Word did (page size change, explicit break,
+      // or a page break Word recorded), not at every section boundary, so a
+      // continuous section (title above two columns) stays on its page.
+      ignoreLastRenderedPageBreak: false,
     });
   } catch (err) {
     console.error(err);
@@ -94,6 +189,9 @@ async function main() {
   doc.hidden = false;
   void scaleEl.offsetHeight;
   try { await document.fonts.ready; } catch { /* ignore */ }
+
+  fixLineHeights(scaleEl);
+  fixColumns(scaleEl);
 
   loading.hidden = true;
   fitBtn.hidden = false;

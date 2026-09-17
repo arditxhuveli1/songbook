@@ -210,6 +210,16 @@ ul.files input[type="text"] { margin-top: 6px; font-family: ui-monospace, SFMono
   margin: 0 0 16px 0 !important;
 }
 
+/* An empty paragraph takes a full line in Word; in HTML an empty <p> or an
+   empty <span> makes no line box. A zero-size inline-block creates one
+   without adding glyphs. */
+.docx p:empty::after, .docx p > span:empty::after {
+  content: "";
+  display: inline-block;
+  width: 0;
+  height: 0;
+}
+
 .loading { color: var(--muted); padding: 40px 16px; text-align: center; }
 .loading::before {
   content: "";
